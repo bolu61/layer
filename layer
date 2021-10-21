@@ -28,7 +28,7 @@ execute () {
     clear
 
     echo "\n#artifact" >> $0
-    tar c -C "$1" . | base64 >> $0
+    tar c -C "$1" . >> $0
 }
 
 mktmpdir () {
@@ -49,7 +49,7 @@ extract () {
     if ! grep -q "^#artifact$" $0; then
         execute "$1"
     fi
-    artifact | base64 -d | tar x -C "$1"
+    artifact | tar x -C "$1"
 }
 
 artifact () {
