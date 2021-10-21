@@ -6,9 +6,13 @@ init () {
         echo "$1 already exists"
         exit 1
     fi
-    file=$1
+    file="$1"
     shift
-    echo "#!/usr/bin/env sh\nCOMMAND=\"$@\"\n" >> $file
+    c="$@"
+    if test -z $c; then
+        c="exit 0"
+    fi
+    echo "#!/usr/bin/env sh\nCOMMAND=\"$c\"\n" >> $file
     sed "/^#code$/,/^#endcode/!d" $0 >> $file
     chmod +x $file
 }
@@ -68,7 +72,13 @@ to () {
         echo "$1 already exists"
         exit 1
     fi
-    print "$2" > $1
+    f="$1"
+    shift
+    c="$@"
+    if test -z $c; then
+        c="exit 0"
+    fi
+    print $c > $1
     chmod +x $1
 }
 
