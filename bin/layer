@@ -62,13 +62,19 @@ to () {
 }
 
 run () {
-    dir="$(gettmpdir)"
+    dir="$(mktemp -d)"
+    trap "rm -rf $dir" EXIT
     extract "$dir"
     sh -c "cd $dir && $*" || exit "$?"
 }
 
 execute () {
-    dir="${1:-"$(gettmpdir)"}"
+    if test "$#" -eq "0"; then
+        dir="$(mktemp -d)"
+        trap "rm -rf $dir" EXIT
+    else
+        dir="$1"
+    fi
 
     if test ! -e "$dir"; then
         echo "$dir can not be found"
@@ -113,16 +119,12 @@ clear () {
     fi
 }
 
-gettmpdir () {
-    echo "${dir:="$(mktemp -d)"}"
-}
-
-trap 'rm -rf -- "$dir"' EXIT
-
 f="${1:-"execute"}"
 case "$f" in
     to|run|execute|extract|print|artifact|clear)
-        shift
+        if test "$#" -ge "1"; then
+            shift
+        fi
         $f "$@"
     ;;
     *)
