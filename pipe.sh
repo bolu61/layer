@@ -1,5 +1,15 @@
 #!/usr/bin/env sh
-COMMAND="exit 1"
+init () {
+    if test -e $1; then
+        echo "$1 already exists"
+        exit 1
+    fi
+    file=$1
+    shift
+    echo "#!/usr/bin/env sh\nCOMMAND=\"$@\"\n" >> $file
+    sed "/^#code$/,/^#endcode/!d" $0 >> $file
+    chmod +x $file
+}
 
 #code
 run () {
