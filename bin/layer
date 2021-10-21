@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+COMMAND="echo \"can not run from base layer\" && exit 1"
+
 init () {
     if test -e $1; then
         echo "$1 already exists"
