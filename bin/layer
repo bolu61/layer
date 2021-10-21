@@ -1,97 +1,135 @@
-#!/usr/bin/env sh
+#!/usr/bin/env -S sh -u
+REQUIRES=""
 COMMAND="echo \"can not run from base layer\" && exit 1"
 
 init () {
-    if test -e $1; then
-        echo "$1 already exists"
+    f="${1:-""}"
+    shift
+    c="${*:-"exit 0"}"
+    if test -z "$f"; then
+        echo "missing name"
+        exit 1
+    elif test -e "$f"; then
+        echo "$f already exists"
         exit 1
     fi
-    file="$1"
-    shift
-    c="$@"
-    if test -z $c; then
-        c="exit 0"
-    fi
-    echo "#!/usr/bin/env sh\nCOMMAND=\"$c\"\n" >> $file
-    sed "/^#code$/,/^#endcode/!d" $0 >> $file
-    chmod +x $file
+    echo "#!/usr/bin/env -S sh -u\nREQUIRES=\nCOMMAND=\"$c\"\n" >> "$f"
+    sed "/^#code$/,/^#endcode/!d" "$0" >> "$f"
+    chmod +x "$f"
 }
 
+if test "$#" -eq "0"; then
+    echo "missing command"
+    exit 1
+elif test "$1" = "init" ; then
+    shift
+    init "$@"
+    exit 0
+else
+    case "$1" in
+        to|run|execute|extract|print|artifact|clear)
+            echo "not a base layer, please init first"
+            echo "usage: $0 init <layer name> \"command\""
+            exit 1
+        ;;
+        *)
+            echo "invalid command"
+            exit 1
+        ;;
+    esac
+fi
+
 #code
+to () {
+    f="${1:-""}"
+    if test -z "$f"; then
+        echo "missing name"
+        exit 1
+    elif test -e "$f"; then
+        echo "$f already exists"
+        exit 1
+    fi
+    shift
+    
+    c="${*:-""}"
+    if test -z "$c"; then
+        echo "missing command"
+        exit 1
+    fi
+    echo "#!/usr/bin/env -S sh -u\n\nREQUIRES=\"$(readlink -f "$0")\"\nCOMMAND=\"$c\"\n" >> "$f"
+    print >> "$f"
+    chmod +x "$f"
+}
+
 run () {
-    dir="$(mktmpdir)"
+    dir="$(gettmpdir)"
     extract "$dir"
-    sh -c "cd $dir && $@" || exit $?
+    sh -c "cd $dir && $*" || exit "$?"
 }
 
 execute () {
-    if ! test -z $REQUIRES; then
-        $REQUIRES extract "$1" || exit $?
+    dir="${1:-"$(gettmpdir)"}"
+
+    if test ! -e "$dir"; then
+        echo "$dir can not be found"
+        exit 1
+    elif test ! -d "$dir"; then
+        echo "$dir is not a directory"
+        exit 1
     fi
 
-    sh -c "cd $1 && $COMMAND" || exit $?
+    if ! test -z $REQUIRES; then
+        $REQUIRES extract "$dir" || exit "$?"
+    fi
+
+    sh -c "cd $dir && $COMMAND" || exit "$?"
 
     clear
 
-    echo "\n#artifact" >> $0
-    tar c -C "$1" . >> $0
-}
-
-mktmpdir () {
-    if test -z $dir; then
-        dir="$(mktemp -d)"
-    fi
-    echo "$dir"
-}
-
-clear () {
-    if grep -q "^#artifact$" $0; then
-        sed -i "/^#artifact$/,\$d" $0
-        sed -i "\$d" $0
-    fi
+    echo "\n#artifact" >> "$0"
+    tar c -C "$dir" . | zstd | base64 -w9 >> "$0"
 }
 
 extract () {
-    if ! grep -q "^#artifact$" $0; then
-        execute "$1"
+    dir="${1:-"."}"
+    if ! grep -q "^#artifact$" "$0"; then
+        execute "$dir"
     fi
-    artifact | tar x -C "$1"
-}
-
-artifact () {
-    sed "1,/^#artifact$/d" $0
+    artifact | base64 -dw9 | zstd -d | tar x -C "$dir"
 }
 
 print () {
-    echo "#!/usr/bin/env sh\n\nREQUIRES=\"$(readlink -f "$0")\"\nCOMMAND=\"$@\"\n"
-    sed "/^#code$/,/^#endcode/!d" $0
+    sed "/^#code$/,/^#endcode/!d" "$0"
 }
 
-to () {
-    if test -e $1; then
-        echo "$1 already exists"
-        exit 1
+artifact () {
+    sed "1,/^#artifact$/d" "$0"
+}
+
+clear () {
+    if grep -q "^#artifact$" "$0"; then
+        sed -i "/^#artifact$/,\$d" "$0"
+        sed -i "\$d" "$0"
     fi
-    f="$1"
-    shift
-    c="$@"
-    if test -z $c; then
-        c="exit 0"
-    fi
-    print $c > $1
-    chmod +x $1
+}
+
+gettmpdir () {
+    echo "${dir:="$(mktemp -d)"}"
 }
 
 trap 'rm -rf -- "$dir"' EXIT
 
-if test -z $1
-then
-    execute "$(mktmpdir)"
-else
-    f=$1
-    shift
-    $f "$@"
-fi
+f="${1:-"execute"}"
+case "$f" in
+    to|run|execute|extract|print|artifact|clear)
+        shift
+        $f "$@"
+    ;;
+    *)
+        echo "invalid command"
+        exit 1
+    ;;
+esac
 
-exit
+exit 0
 #endcode
