@@ -15,7 +15,7 @@ init () {
 run () {
     dir="$(mktmpdir)"
     extract "$dir"
-    sh -c "cd $dir && $1" || exit $?
+    sh -c "cd $dir && $@" || exit $?
 }
 
 execute () {
