@@ -3,7 +3,7 @@
 A dead simple tool for pipelining sequences of commands that automatically cashes artifacts.
 
 ```sh
-curl -L https://github.com/anana-s/layer/releases/latest/download/layer.tar.xz | tar xJ
+curl -L https://github.com/anana-s/layer/releases/latest/download/layer.tar.xz | tar x --zstd
 ```
 
 ## Requirements
