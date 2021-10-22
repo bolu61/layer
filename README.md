@@ -1,6 +1,6 @@
 # Layer
 
-A dead simple tool for pipelining sequences of commands. Automatically cashes artifacts.
+A dead simple tool for pipelining sequences of commands that automatically cashes artifacts.
 
 # Requirements
 
